@@ -24,7 +24,9 @@ jobs:
           sudo apt-get install -y git gnupg flex bison build-essential zip curl \
             zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 \
             x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev \
-            libxml2-utils xsltproc unzip fontconfig python3 bc rsync
+            libxml2-utils xsltproc unzip fontconfig python3 bc rsync \
+            libncurses5 libtinfo5 libncurses5-dev
+          sudo apt-get install -y openjdk-8-jdk python2 || true
 
       - name: repo aracını kur
         run: |
@@ -59,6 +61,12 @@ jobs:
       - name: Derle
         run: |
           cd "$GITHUB_WORKSPACE/twrp"
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export LC_ALL=C
+          if [ -d /usr/lib/jvm/java-8-openjdk-amd64 ]; then
+            export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+            export PATH="$JAVA_HOME/bin:$PATH"
+          fi
           source build/envsetup.sh
           lunch omni_k39tv1_bsp_1g-eng
           mka recoveryimage -j$(nproc)
