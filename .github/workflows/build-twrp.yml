@@ -11,13 +11,18 @@ jobs:
       - name: Diski büyüt
         uses: easimon/maximize-build-space@master
         with:
-          root-reserve-mb: 2048
+          root-reserve-mb: 4096
           swap-size-mb: 4096
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
+
+      - name: Disk durumu
+        run: |
+          df -h
+          echo "Calisma klasoru: $GITHUB_WORKSPACE"
 
       - name: Bağımlılıkları kur
         run: |
@@ -41,23 +46,25 @@ jobs:
 
       - name: TWRP minimal manifest çek
         run: |
-          mkdir -p ~/twrp && cd ~/twrp
-          repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git -b twrp-9.0
-          repo sync -j$(nproc) --force-sync
+          mkdir -p "$GITHUB_WORKSPACE/twrp"
+          cd "$GITHUB_WORKSPACE/twrp"
+          repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git -b twrp-9.0
+          repo sync -c --no-tags --no-clone-bundle -j4 --force-sync
+          df -h
 
       - name: Device tree'yi ekle
         run: |
-          cd ~/twrp
+          cd "$GITHUB_WORKSPACE/twrp"
           git clone https://github.com/ZH-XiJun/twrp_device_alps_k39tv1_bsp_1g.git -b twrp-9.0 device/alps/k39tv1_bsp_1g
 
       - name: Prebuilt kernel/dtb kontrolü
         run: |
-          cd ~/twrp
+          cd "$GITHUB_WORKSPACE/twrp"
           ls -la device/alps/k39tv1_bsp_1g/prebuilt/ || echo "UYARI: prebuilt dizini eksik olabilir"
 
       - name: Derle
         run: |
-          cd ~/twrp
+          cd "$GITHUB_WORKSPACE/twrp"
           source build/envsetup.sh
           lunch omni_k39tv1_bsp_1g-eng
           mka recoveryimage -j$(nproc)
@@ -66,5 +73,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: recovery-k39tv1_bsp_1g
-          path: ~/twrp/out/target/product/k39tv1_bsp_1g/recovery.img
+          path: ${{ github.workspace }}/twrp/out/target/product/k39tv1_bsp_1g/recovery.img
           retention-days: 14
