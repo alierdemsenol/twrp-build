@@ -26,7 +26,14 @@ jobs:
             x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev \
             libxml2-utils xsltproc unzip fontconfig python3 bc rsync \
             libncurses5 libtinfo5 libncurses5-dev
-          sudo apt-get install -y openjdk-8-jdk python2 || true
+          sudo apt-get install -y python2
+          sudo apt-get install -y openjdk-8-jdk || true
+
+      - name: Python 2 ayarla
+        run: |
+          mkdir -p "$HOME/py2bin"
+          ln -sf "$(which python2)" "$HOME/py2bin/python"
+          "$HOME/py2bin/python" --version
 
       - name: repo aracını kur
         run: |
@@ -61,12 +68,14 @@ jobs:
       - name: Derle
         run: |
           cd "$GITHUB_WORKSPACE/twrp"
+          export PATH="$HOME/py2bin:$PATH"
           export ALLOW_MISSING_DEPENDENCIES=true
           export LC_ALL=C
           if [ -d /usr/lib/jvm/java-8-openjdk-amd64 ]; then
             export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
             export PATH="$JAVA_HOME/bin:$PATH"
           fi
+          echo "python surumu:"; python --version
           source build/envsetup.sh
           lunch omni_k39tv1_bsp_1g-eng
           mka recoveryimage -j$(nproc)
