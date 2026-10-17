@@ -1,0 +1,70 @@
+name: Build TWRP - k39tv1_bsp_1g
+
+on:
+  workflow_dispatch:   # GitHub arayüzünden "Run workflow" butonuyla elle tetiklenir
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350   # 6 saate yakın üst sınır (Actions free tier max)
+    steps:
+      - name: Diski büyüt (varsayılan runner diski yetersiz kalır)
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 2048
+          swap-size-mb: 4096
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
+      - name: Bağımlılıkları kur
+        run: |
+          sudo apt update
+          sudo apt install -y git gnupg flex bison build-essential zip curl \
+            zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 \
+            x11proto-core-dev libx11-dev lib32z1-dev libgl1-mesa-dev \
+            libxml2-utils xsltproc unzip fontconfig python3 bc rsync
+
+      - name: repo aracını kur
+        run: |
+          mkdir -p ~/bin
+          curl -s https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: git kullanıcı bilgisi
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: TWRP minimal manifest çek
+        run: |
+          mkdir -p ~/twrp && cd ~/twrp
+          repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git -b twrp-9.0
+          repo sync -j$(nproc) --force-sync
+
+      - name: Device tree'yi ekle
+        run: |
+          cd ~/twrp
+          git clone https://github.com/ZH-XiJun/twrp_device_alps_k39tv1_bsp_1g.git -b twrp-9.0 device/alps/k39tv1_bsp_1g
+
+      - name: Prebuilt kernel/dtb kontrolü
+        run: |
+          cd ~/twrp
+          ls -la device/alps/k39tv1_bsp_1g/prebuilt/ || echo "UYARI: prebuilt dizini eksik olabilir"
+
+      - name: Derle
+        run: |
+          cd ~/twrp
+          source build/envsetup.sh
+          lunch omni_k39tv1_bsp_1g-eng
+          mka recoveryimage -j$(nproc)
+
+      - name: recovery.img'i artifact olarak yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-k39tv1_bsp_1g
+          path: ~/twrp/out/target/product/k39tv1_bsp_1g/recovery.img
+          retention-days: 14
